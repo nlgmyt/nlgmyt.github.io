@@ -13,10 +13,6 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import json  # Import the json module
 
-# --- RICH LIBRARY IMPORTS ---
-from rich.console import Console
-from rich.table import Table
-
 
 # --- CONFIGURATION ---
 class Config:
@@ -264,9 +260,7 @@ class TelegramBotHandler:
         self.app = Application.builder().token(config.BOT_TOKEN).build()
         self.sheets_handler = GoogleSheetsHandler()
         self._register_handlers()
-        
-        # --- RICH CONSOLE INIT ---
-        self.console = Console()  # Initialize Rich Console
+       
         logger.info("Bot Telegram đã được khởi tạo.")
 
     def _register_handlers(self):
@@ -312,44 +306,66 @@ class TelegramBotHandler:
     async def recharge(self, update: Update, context):
         chat_id = update.effective_chat.id
 
-        # --- RICH TABLE CREATION ---
-        table_price = Table(title="[bold green]Bảng Giá[/bold green]", title_style="bold green", box="ROUNDED")
-        table_price.add_column("[cyan]Thời Gian[/cyan]", justify="center", style="cyan", no_wrap=True)
-        table_price.add_column("[yellow]Giá[/yellow]", justify="center", style="yellow")
+        # --- TABLE PRINTING FUNCTION (MOVED INSIDE CLASS) ---
+        def _print_table(title, rows, columns_width):
+             table_str = ""
+             # In tiêu đề
+             table_str += f"\033[1;32m{title}\033[0m\n"
+             table_str += "-" * (sum(columns_width) + len(columns_width) - 1) + "\n"
 
-        table_price.add_row("30 ngày", "10.000₫")
-        table_price.add_row("60 ngày", "18.000₫")
-        table_price.add_row("90 ngày", "25.000₫")
+             # In tên các cột
+             for i, col in enumerate(rows[0]):
+                table_str += f"{col:{columns_width[i]}}"
+                if i < len(columns_width) - 1:
+                    table_str += " | "
+                else:
+                    table_str += "\n"
+             table_str += "-" * (sum(columns_width) + len(columns_width) - 1) + "\n"
 
-        table_bank = Table(title="[bold green]Thông Tin Thanh Toán[/bold green]", title_style="bold green", box="ROUNDED")
-        table_bank.add_column("[magenta]Loại[/magenta]", justify="left", style="magenta")
-        table_bank.add_column("[white]Thông Tin[/white]", justify="left", style="white")
+             # In các dòng dữ liệu
+             for row in rows[1:]:
+                  for i, cell in enumerate(row):
+                       table_str += f"{cell:{columns_width[i]}}"
+                       if i < len(columns_width) - 1:
+                           table_str += " | "
+                       else:
+                            table_str += "\n"
+             table_str += "-" * (sum(columns_width) + len(columns_width) - 1) + "\n"
+             return table_str
 
-        table_bank.add_row("Ngân hàng", "Mb Bank")
-        table_bank.add_row("Tên tài khoản", "Nguyễn Huỳnh Hoàng Long")
-        table_bank.add_row("Số tài khoản", "0772144548")
-        table_bank.add_row("Nội dung", "id telegram (/getid để lấy id)")
 
-        instruction = (
-            "Sau khi thanh toán, hãy sử dụng lệnh [bold green]/paid[/bold green] "
-            "kèm [bold yellow]ID VỪA LẤY[/bold yellow] để kích hoạt tài khoản.\n"
-            "Nếu gặp vấn đề, hãy liên hệ [bold blue]@harrynoblenlgmyt[/bold blue]."
+        # Dữ liệu bảng giá
+        price_table = [
+             ["Thời Gian", "Giá"],
+             ["30 ngày", "10.000₫"],
+             ["60 ngày", "18.000₫"],
+             ["90 ngày", "25.000₫"]
+        ]
+
+        # Dữ liệu bảng ngân hàng
+        bank_table = [
+            ["Loại", "Thông Tin"],
+            ["Ngân hàng", "Mb Bank"],
+            ["Tên tài khoản", "Nguyễn Huỳnh Hoàng Long"],
+            ["Số tài khoản", "0772144548"],
+            ["Nội dung", "id telegram (/getid để lấy id)"]
+        ]
+
+        # Generate the recharge information string
+        recharge_text = _print_table("Bảng Giá", price_table, [12, 12])
+        recharge_text += "\n"  # Add a newline between the tables.
+        recharge_text += _print_table("Thông Tin Thanh Toán", bank_table, [12, 25])
+        recharge_text += (
+                "\nSau khi thanh toán, hãy sử dụng lệnh /paid kèm ID VỪA LẤY để kích hoạt tài khoản.\n"
+                "Nếu gặp vấn đề, hãy liên hệ @harrynoblenlgmyt."
         )
-
-        # --- CONVERT RICH OUTPUT TO TEXT ---
-        console = self.console  # Get the console object
-        console.print(table_price)
-        console.print(table_bank)
-        console.print(instruction)
-
-        recharge_text = console.export_text()
         
-        # --- SEND MESSAGE WITH RICH TABLE ---
+        # --- SEND MESSAGE WITH TEXT-BASED TABLE ---
         await context.bot.send_message(
             chat_id=chat_id,
             text=recharge_text
         )
-
+    
     async def paid(self, update: Update, context):
         chat_id = update.effective_chat.id
         user_message = ' '.join(context.args).strip()
@@ -604,17 +620,4 @@ class TelegramBotHandler:
 
 # --- MAIN ---
 # Logging setup
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-def main():
-    """Khởi tạo và chạy bot."""
-    try:
-        bot = TelegramBotHandler()
-        bot.run()
-    except Exception as e:
-        logger.error(f"Lỗi trong quá trình khởi chạy bot: {e}")
-
-if __name__ == "__main__":
-    main()
+logging.basicConfig(format='%(asctime)
