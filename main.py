@@ -11,13 +11,14 @@ from telegram.ext import (
 )
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
+import json  # Import the json module
 
 # --- CONFIGURATION ---
 class Config:
     """Lớp chứa các cấu hình của bot."""
     BOT_TOKEN = "7684510871:AAHmPcT0KI5VqIQ_DE7jdaQngaL_TWqINCw"  # Replace with your bot token
     ADMIN_CHAT_ID = "5049353267"  # Replace with your admin chat ID
-    GOOGLE_JSON_KEY_PATH = "/storage/emulated/0/Download/thu-chi-tele-446215-dd9acc542272.json" # Replace with your JSON key path
+    # GOOGLE_JSON_KEY_PATH = "/storage/emulated/0/Download/thu-chi-tele-446215-dd9acc542272.json" # Remove this line
     GOOGLE_SHEET_NAME = "ThuChiData"
     GOOGLE_USER_MANAGEMENT_WORKSHEET_NAME = "UserManagement"
     GOOGLE_MESSAGES_LOG_WORKSHEET_NAME = "MessagesLog" # New config
@@ -33,7 +34,7 @@ class Config:
     @classmethod
     def validate(cls):
         """Kiểm tra tính hợp lệ của các biến môi trường."""
-        if not all([cls.BOT_TOKEN, cls.ADMIN_CHAT_ID, cls.GOOGLE_JSON_KEY_PATH]):
+        if not all([cls.BOT_TOKEN, cls.ADMIN_CHAT_ID]): # Remove GOOGLE_JSON_KEY_PATH validation
             raise ValueError("Không tìm thấy tất cả các biến môi trường cần thiết. Hãy kiểm tra file .env.")
         
         if not cls.ADMIN_CHAT_ID.isdigit():
@@ -69,7 +70,11 @@ SHEET_LINK_REGEX = r'https:\/\/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9-_
 class GoogleSheetsHandler:
     def __init__(self):
         try:
-            creds = ServiceAccountCredentials.from_json_keyfile_name(config.GOOGLE_JSON_KEY_PATH, scope)
+            json_key = os.getenv("GOOGLE_JSON_KEY")
+            if not json_key:
+                raise ValueError("Biến môi trường GOOGLE_JSON_KEY không được cấu hình.")
+            
+            creds = ServiceAccountCredentials.from_json_keyfile_dict(json.loads(json_key), scope)
             self.client = gspread.authorize(creds)
             self.user_management_sheet = self.client.open(config.GOOGLE_SHEET_NAME).worksheet(config.GOOGLE_USER_MANAGEMENT_WORKSHEET_NAME)
             self.messages_log_sheet = self.client.open(config.GOOGLE_SHEET_NAME).worksheet(config.GOOGLE_MESSAGES_LOG_WORKSHEET_NAME) # New sheet init
