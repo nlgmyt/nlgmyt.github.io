@@ -13,7 +13,6 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import json  # Import the json module
 
-
 # --- CONFIGURATION ---
 class Config:
     """Lớp chứa các cấu hình của bot."""
@@ -260,7 +259,6 @@ class TelegramBotHandler:
         self.app = Application.builder().token(config.BOT_TOKEN).build()
         self.sheets_handler = GoogleSheetsHandler()
         self._register_handlers()
-       
         logger.info("Bot Telegram đã được khởi tạo.")
 
     def _register_handlers(self):
@@ -305,67 +303,20 @@ class TelegramBotHandler:
             
     async def recharge(self, update: Update, context):
         chat_id = update.effective_chat.id
-
-        # --- TABLE PRINTING FUNCTION (MOVED INSIDE CLASS) ---
-        def _print_table(title, rows, columns_width):
-             table_str = ""
-             # In tiêu đề
-             table_str += f"\033[1;32m{title}\033[0m\n"
-             table_str += "-" * (sum(columns_width) + len(columns_width) - 1) + "\n"
-
-             # In tên các cột
-             for i, col in enumerate(rows[0]):
-                table_str += f"{col:{columns_width[i]}}"
-                if i < len(columns_width) - 1:
-                    table_str += " | "
-                else:
-                    table_str += "\n"
-             table_str += "-" * (sum(columns_width) + len(columns_width) - 1) + "\n"
-
-             # In các dòng dữ liệu
-             for row in rows[1:]:
-                  for i, cell in enumerate(row):
-                       table_str += f"{cell:{columns_width[i]}}"
-                       if i < len(columns_width) - 1:
-                           table_str += " | "
-                       else:
-                            table_str += "\n"
-             table_str += "-" * (sum(columns_width) + len(columns_width) - 1) + "\n"
-             return table_str
-
-
-        # Dữ liệu bảng giá
-        price_table = [
-             ["Thời Gian", "Giá"],
-             ["30 ngày", "10.000₫"],
-             ["60 ngày", "18.000₫"],
-             ["90 ngày", "25.000₫"]
-        ]
-
-        # Dữ liệu bảng ngân hàng
-        bank_table = [
-            ["Loại", "Thông Tin"],
-            ["Ngân hàng", "Mb Bank"],
-            ["Tên tài khoản", "Nguyễn Huỳnh Hoàng Long"],
-            ["Số tài khoản", "0772144548"],
-            ["Nội dung", "id telegram (/getid để lấy id)"]
-        ]
-
-        # Generate the recharge information string
-        recharge_text = _print_table("Bảng Giá", price_table, [12, 12])
-        recharge_text += "\n"  # Add a newline between the tables.
-        recharge_text += _print_table("Thông Tin Thanh Toán", bank_table, [12, 25])
-        recharge_text += (
-                "\nSau khi thanh toán, hãy sử dụng lệnh /paid kèm ID VỪA LẤY để kích hoạt tài khoản.\n"
-                "Nếu gặp vấn đề, hãy liên hệ @harrynoblenlgmyt."
-        )
-        
-        # --- SEND MESSAGE WITH TEXT-BASED TABLE ---
         await context.bot.send_message(
             chat_id=chat_id,
-            text=recharge_text
+            text=(
+              "Bảng giá: \n 10.000₫/tháng \n 18.000₫ \n 27.000₫"
+                "Để gia hạn tài khoản, vui lòng thanh toán qua:\n\n"
+                "Ngân hàng\n"
+                "• Ngân hàng: Mb Bank\n\n"
+                "• Tên tài khoản: Nguyễn Huỳnh Hoàng Long\n"
+                "• Số tài khoản: 0772144548\n"
+                "• Nội dung chuyển khoản: id telegram \n  /getid để lấy id"
+                "Sau khi thanh toán, hãy sử dụng lệnh /paid kèm mã giao dịch hoặc thông tin chuyển khoản để chúng tôi kích hoạt tài khoản cho bạn.\n Nếu gặp vấn đề hãy liên hệ @harrynoblenlgmyt"
+            ),
         )
-    
+
     async def paid(self, update: Update, context):
         chat_id = update.effective_chat.id
         user_message = ' '.join(context.args).strip()
@@ -620,4 +571,17 @@ class TelegramBotHandler:
 
 # --- MAIN ---
 # Logging setup
-logging
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                    level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+def main():
+    """Khởi tạo và chạy bot."""
+    try:
+        bot = TelegramBotHandler()
+        bot.run()
+    except Exception as e:
+        logger.error(f"Lỗi trong quá trình khởi chạy bot: {e}")
+
+if __name__ == "__main__":
+    main()
