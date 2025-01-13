@@ -13,6 +13,11 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import json  # Import the json module
 
+# --- RICH LIBRARY IMPORTS ---
+from rich.console import Console
+from rich.table import Table
+
+
 # --- CONFIGURATION ---
 class Config:
     """Lớp chứa các cấu hình của bot."""
@@ -259,6 +264,9 @@ class TelegramBotHandler:
         self.app = Application.builder().token(config.BOT_TOKEN).build()
         self.sheets_handler = GoogleSheetsHandler()
         self._register_handlers()
+        
+        # --- RICH CONSOLE INIT ---
+        self.console = Console()  # Initialize Rich Console
         logger.info("Bot Telegram đã được khởi tạo.")
 
     def _register_handlers(self):
@@ -303,18 +311,43 @@ class TelegramBotHandler:
             
     async def recharge(self, update: Update, context):
         chat_id = update.effective_chat.id
+
+        # --- RICH TABLE CREATION ---
+        table_price = Table(title="[bold green]Bảng Giá[/bold green]", title_style="bold green", box="ROUNDED")
+        table_price.add_column("[cyan]Thời Gian[/cyan]", justify="center", style="cyan", no_wrap=True)
+        table_price.add_column("[yellow]Giá[/yellow]", justify="center", style="yellow")
+
+        table_price.add_row("30 ngày", "10.000₫")
+        table_price.add_row("60 ngày", "18.000₫")
+        table_price.add_row("90 ngày", "25.000₫")
+
+        table_bank = Table(title="[bold green]Thông Tin Thanh Toán[/bold green]", title_style="bold green", box="ROUNDED")
+        table_bank.add_column("[magenta]Loại[/magenta]", justify="left", style="magenta")
+        table_bank.add_column("[white]Thông Tin[/white]", justify="left", style="white")
+
+        table_bank.add_row("Ngân hàng", "Mb Bank")
+        table_bank.add_row("Tên tài khoản", "Nguyễn Huỳnh Hoàng Long")
+        table_bank.add_row("Số tài khoản", "0772144548")
+        table_bank.add_row("Nội dung", "id telegram (/getid để lấy id)")
+
+        instruction = (
+            "Sau khi thanh toán, hãy sử dụng lệnh [bold green]/paid[/bold green] "
+            "kèm [bold yellow]ID VỪA LẤY[/bold yellow] để kích hoạt tài khoản.\n"
+            "Nếu gặp vấn đề, hãy liên hệ [bold blue]@harrynoblenlgmyt[/bold blue]."
+        )
+
+        # --- CONVERT RICH OUTPUT TO TEXT ---
+        console = self.console  # Get the console object
+        console.print(table_price)
+        console.print(table_bank)
+        console.print(instruction)
+
+        recharge_text = console.export_text()
+        
+        # --- SEND MESSAGE WITH RICH TABLE ---
         await context.bot.send_message(
             chat_id=chat_id,
-            text=(
-              "Bảng giá: \n 10.000₫/tháng \n 18.000₫ \n 27.000₫"
-                "Để gia hạn tài khoản, vui lòng thanh toán qua:\n\n"
-                "Ngân hàng\n"
-                "• Ngân hàng: Mb Bank\n\n"
-                "• Tên tài khoản: Nguyễn Huỳnh Hoàng Long\n"
-                "• Số tài khoản: 0772144548\n"
-                "• Nội dung chuyển khoản: id telegram \n  /getid để lấy id"
-                "Sau khi thanh toán, hãy sử dụng lệnh /paid kèm mã giao dịch hoặc thông tin chuyển khoản để chúng tôi kích hoạt tài khoản cho bạn.\n Nếu gặp vấn đề hãy liên hệ @harrynoblenlgmyt"
-            ),
+            text=recharge_text
         )
 
     async def paid(self, update: Update, context):
