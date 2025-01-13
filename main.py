@@ -620,4 +620,4 @@ class TelegramBotHandler:
 
 # --- MAIN ---
 # Logging setup
-logging.basicConfig(format='%(asctime)
+logging
