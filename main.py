@@ -244,7 +244,7 @@ class GoogleSheetsHandler:
              print(f"Debug - log_message_to_sheet: Error saving message: {e}")
              raise GoogleSheetError(f"Lỗi khi ghi log tin nhắn vào Google Sheet: {e}")
 
-# --- XỬ LÝ BOT TELEGRAM ---
+# --- TELEGRAM BOT HANDLER ---
 logger = logging.getLogger(__name__)
 DATE_FORMAT = '%Y-%m-%d'
 DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S'
@@ -256,10 +256,9 @@ user_sessions = {}
 user_message_times = {} # Lưu thời gian gửi tin nhắn để chống spam
 
 class TelegramBotHandler:
-    def __init__(self, bot_instance):
+    def __init__(self):
         # Không khởi tạo bot ở đây nữa mà sử dụng bot từ Flask
-        self.bot = bot_instance
-        self.app = Application.builder().token(config.BOT_TOKEN).bot(self.bot).build()
+        self.app = Application.builder().token(config.BOT_TOKEN).build()
         self.sheets_handler = GoogleSheetsHandler()
         self._register_handlers()
         logger.info("Bot Telegram đã được khởi tạo.")
@@ -594,7 +593,7 @@ if __name__ == "__main__":
     try:
         # Khởi tạo Bot từ Flask để không bị xung đột
         bot = Bot(token=config.BOT_TOKEN)
-        telegram_bot_handler = TelegramBotHandler(bot)
+        telegram_bot_handler = TelegramBotHandler()
         
         # Chạy bot sử dụng webhook
         port = int(os.environ.get("PORT", 10000))
