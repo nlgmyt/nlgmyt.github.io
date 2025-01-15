@@ -256,9 +256,10 @@ user_sessions = {}
 user_message_times = {} # Lưu thời gian gửi tin nhắn để chống spam
 
 class TelegramBotHandler:
-    def __init__(self):
+    def __init__(self, bot):
         # Không khởi tạo bot ở đây nữa mà sử dụng bot từ Flask
-        self.app = Application.builder().token(config.BOT_TOKEN).build()
+        self.bot = bot
+        self.app = Application.builder().token(config.BOT_TOKEN).bot(self.bot).build()
         self.sheets_handler = GoogleSheetsHandler()
         self._register_handlers()
         logger.info("Bot Telegram đã được khởi tạo.")
@@ -577,9 +578,16 @@ def home():
 @app.route('/webhook', methods=['POST'])
 def webhook():
     data = request.get_json()
+    print("Webhook data received:", data)  # In dữ liệu nhận từ Telegram
     if data:
-        update = Update.de_json(data, bot)
-        telegram_bot_handler.app.process_update(update)  # Chuyển update đến Application
+        try:
+            update = Update.de_json(data, bot)
+            if update.message:
+                telegram_bot_handler.app.process_update(update)
+            else:
+                logger.warning("Webhook received non-message update")
+        except Exception as e:
+            logger.error(f"Error processing webhook data: {e}")
     return "OK"
 
 # --- MAIN ---
@@ -593,11 +601,8 @@ if __name__ == "__main__":
     try:
         # Khởi tạo Bot từ Flask để không bị xung đột
         bot = Bot(token=config.BOT_TOKEN)
-        telegram_bot_handler = TelegramBotHandler()
-        
+        telegram_bot_handler = TelegramBotHandler(bot)
+
         # Chạy bot sử dụng webhook
         port = int(os.environ.get("PORT", 10000))
-        app.run(host='0.0.0.0', port=port)
-      
-    except Exception as e:
-        logger.error(f"Lỗi trong quá trình khởi chạy bot: {e}")
+        app.run(host='0.0.0.0', port
