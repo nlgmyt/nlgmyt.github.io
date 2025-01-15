@@ -2,7 +2,7 @@ import logging
 import os
 from datetime import datetime, timedelta
 import re
-from telegram import Update
+from telegram import Update, Bot
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -12,6 +12,7 @@ from telegram.ext import (
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import json  # Import the json module
+from flask import Flask, request
 
 # --- CONFIGURATION ---
 class Config:
@@ -255,8 +256,9 @@ user_sessions = {}
 user_message_times = {} # Store message time for spam
 
 class TelegramBotHandler:
-    def __init__(self):
-        self.app = Application.builder().token(config.BOT_TOKEN).build()
+    def __init__(self, bot_instance):
+        self.bot = bot_instance
+        self.app = Application.builder().token(config.BOT_TOKEN).bot(self.bot).build()
         self.sheets_handler = GoogleSheetsHandler()
         self._register_handlers()
         logger.info("Bot Telegram đã được khởi tạo.")
@@ -271,9 +273,6 @@ class TelegramBotHandler:
          self.app.add_handler(CommandHandler('set_sheet', self.set_sheet))  # New handler
          self.app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_message))
 
-    def run(self):
-        self.app.run_polling()
-        
     async def start(self, update: Update, context):
         chat_id = update.effective_chat.id
         now = datetime.now().strftime(DATETIME_FORMAT)
@@ -568,6 +567,20 @@ class TelegramBotHandler:
             amount = float(amount_str)
         return amount
         
+# --- FLASK APP ---
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "Bot is running!"
+
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    data = request.get_json()
+    if data:
+        update = Update.de_json(data, bot)
+        telegram_bot_handler.app.process_update(update)  # Process update through the bot
+    return "OK"
 
 # --- MAIN ---
 # Logging setup
@@ -575,13 +588,15 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
                     level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def main():
+if __name__ == "__main__":
     """Khởi tạo và chạy bot."""
     try:
-        bot = TelegramBotHandler()
-        bot.run()
+        bot = Bot(token=config.BOT_TOKEN)
+        telegram_bot_handler = TelegramBotHandler(bot)
+        
+        # Start bot using webhook
+        port = int(os.environ.get("PORT", 10000))
+        app.run(host='0.0.0.0', port=port)
+      
     except Exception as e:
         logger.error(f"Lỗi trong quá trình khởi chạy bot: {e}")
-
-if __name__ == "__main__":
-    main()
