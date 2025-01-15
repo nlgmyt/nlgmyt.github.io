@@ -86,15 +86,10 @@ class GoogleSheetsHandler:
 
     def _get_user_row(self, chat_id):
          try:
-            print(f"Debug - _get_user_row: Searching for user with chat_id: {chat_id}, type: {type(chat_id)}")
             users = self.user_management_sheet.get_all_records()
             for index, user in enumerate(users):
-                print(f"Debug - _get_user_row: Checking user: {user}, type_chat_id: {type(chat_id)}, type_sheet_id: {type(user['ChatID'])}")
                 if user['ChatID'] == str(chat_id) and user.get('SheetLink'):
-                    print(f"Debug - _get_user_row: Found user, row: {index + 2}")
                     return index + 2
-            
-            print(f"Debug - _get_user_row: User not found")
             return None
          except Exception as e:
             logger.error(f"Lỗi khi lấy thông tin người dùng từ sheet: {e}")
@@ -102,17 +97,10 @@ class GoogleSheetsHandler:
 
     def get_user_from_sheet(self, chat_id):
         try:
-            print(f"Debug - get_user_from_sheet: Searching for user with chat_id: {chat_id}, type: {type(chat_id)}")
-            users = self.user_management_sheet.get_all_records()
-            print(f"Debug - get_user_from_sheet: All users: {users}")
-            
+            users = self.user_management_sheet.get_all_records()            
             for user in users:
-                print(f"Debug - get_user_from_sheet: Checking user: {user}")
                 if str(user['ChatID']) == str(chat_id):
-                    print(f"Debug - get_user_from_sheet: Found user: {user}")
                     return user
-            
-            print(f"Debug - get_user_from_sheet: No user found with chat_id: {chat_id}")
             return None
         except Exception as e:
             logger.error(f"Lỗi khi lấy thông tin người dùng từ sheet: {e}")
@@ -130,21 +118,17 @@ class GoogleSheetsHandler:
             if status:
                 values_to_update[config.USER_COLUMNS['status']] = status
             
-            print(f"Debug - update_user_sheet: Values to update: {values_to_update}, User row: {user_row}")
-
             if user_row:
                 # Cập nhật thông tin người dùng đã có
                 for col, value in values_to_update.items():
                     self.user_management_sheet.update_cell(user_row, col + 1, value)
 
                 logger.info(f"Đã cập nhật thông tin người dùng {chat_id} trong sheet. Cập nhật: {values_to_update}")
-                print(f"Debug - update_user_sheet: updated user {chat_id}")
             else:
                 # Thêm người dùng mới
                 new_row = [str(chat_id), start_time, expiry_date, status]
                 self.user_management_sheet.append_row(new_row)
                 logger.info(f"Đã thêm người dùng mới {chat_id} vào sheet: {new_row}")
-                print(f"Debug - update_user_sheet: added new user: {new_row}")
             return True
         except Exception as e:
             logger.error(f"Lỗi khi cập nhật sheet: {e}")
@@ -154,9 +138,7 @@ class GoogleSheetsHandler:
          try:
              user = self.get_user_from_sheet(chat_id)
              if user and user.get('SheetLink'):
-                print(f"Debug - get_user_sheet_link: Found SheetLink: {user['SheetLink']}")
                 return user['SheetLink']
-             print(f"Debug - get_user_sheet_link: No user or SheetLink found")
              return None
          except Exception as e:
             logger.error(f"Lỗi khi lấy link sheet user: {e}")
@@ -164,19 +146,14 @@ class GoogleSheetsHandler:
     
     def update_user_sheet_link(self, chat_id, sheet_link=None):
          try:
-            print(f"Debug - update_user_sheet_link: Start, chat_id={chat_id}, sheet_link={sheet_link}")
             users = self.user_management_sheet.get_all_records()
-            print(f"Debug - update_user_sheet_link: All users before update: {users}")
             user_row = next(
                 (index + 2 for index, user in enumerate(users) if str(user['ChatID']) == str(chat_id)), None
              )
-            print(f"Debug - update_user_sheet_link: User row found: {user_row}")
             
             if user_row:
-                print(f"Debug - update_user_sheet_link: Before Update Cell, user_row={user_row}, sheet_link={sheet_link}")
                 self.user_management_sheet.update_cell(user_row, 5, sheet_link)  # Giả sử cột 5 là `SheetLink`
                 logger.info(f"Đã cập nhật link sheet của người dùng {chat_id}: {sheet_link}")
-                print(f"Debug - update_user_sheet_link: Link updated successfully")
             else:
                 # Chỉ thêm dòng mới nếu không có user nào
                 existing_user = any(user['ChatID'] == str(chat_id) for user in users)
@@ -184,10 +161,8 @@ class GoogleSheetsHandler:
                     new_row = [str(chat_id), None, None, None, sheet_link]
                     self.user_management_sheet.append_row(new_row)
                     logger.info(f"Đã thêm link sheet mới cho user {chat_id}: {new_row}")
-                    print(f"Debug - update_user_sheet_link: Added new user with link")
                 else:
                     raise GoogleSheetError("Không thể tìm thấy hàng hợp lệ để cập nhật.")
-            print(f"Debug - update_user_sheet_link: End")
             return True
          except Exception as e:
             logger.error(f"Lỗi khi cập nhật sheet link: {e}")
@@ -197,38 +172,27 @@ class GoogleSheetsHandler:
          try:
             # Kiểm tra link có phải là dạng URL của Google Sheets
             if "docs.google.com/spreadsheets" not in sheet_link:
-                print(f"Debug - validate_sheet_link: Invalid link format: {sheet_link}")
                 return False
 
             # Thử mở sheet bằng link để kiểm tra tính hợp lệ
             self.client.open_by_url(sheet_link)
-            print(f"Debug - validate_sheet_link: Valid link: {sheet_link}")
             return True
          except Exception as e:
-            print(f"Debug - validate_sheet_link: Error validating sheet link: {e}")
             return False
 
     def add_expense(self, chat_id, description, amount, sheet_link):
         try:
-            print(f"Debug - add_expense: chat_id={chat_id}, description={description}, amount={amount}, sheet_link={sheet_link}")
             if not self.validate_sheet_link(sheet_link):
-                print("Debug - add_expense: Invalid sheet link")
                 raise GoogleSheetError("Link sheet chi tiêu không hợp lệ.")
-            print(f"Debug - add_expense: Before open by url sheet {sheet_link}")
             user_sheet = self.client.open_by_url(sheet_link).sheet1
-            print(f"Debug - add_expense: After open by url sheet")
             now = datetime.now()
             date_string = now.strftime('%Y-%m-%d %H:%M:%S')
             new_row = [date_string, description, amount]
-            print(f"Debug - add_expense: Before append row: {new_row}")
             user_sheet.append_row(new_row)
-            print(f"Debug - add_expense: After append row")
             logger.info(f"Đã thêm chi tiêu cho người dùng {chat_id}: {new_row}")
-            print(f"Debug - add_expense: Added to sheet: {new_row}")
             return True
         except Exception as e:
             logger.error(f"Lỗi khi thêm chi tiêu: {e}")
-            print(f"Debug - add_expense: Error {e}")
             raise GoogleSheetError(f"Lỗi khi thêm chi tiêu: {e}")
     
     def log_message_to_sheet(self, chat_id, message_text, message_count):
@@ -238,10 +202,8 @@ class GoogleSheetsHandler:
             new_row = [str(chat_id), message_text, message_count]
             self.messages_log_sheet.append_row(new_row)
             logger.info(f"Đã lưu tin nhắn của {chat_id} vào Google Sheet: {new_row}")
-            print(f"Debug - log_message_to_sheet: Saved message to sheet: {new_row}")
         except Exception as e:
              logger.error(f"Lỗi khi ghi log tin nhắn vào Google Sheet: {e}")
-             print(f"Debug - log_message_to_sheet: Error saving message: {e}")
              raise GoogleSheetError(f"Lỗi khi ghi log tin nhắn vào Google Sheet: {e}")
 
 # --- TELEGRAM BOT HANDLER ---
@@ -277,15 +239,10 @@ class TelegramBotHandler:
     async def start(self, update: Update, context):
         chat_id = update.effective_chat.id
         now = datetime.now().strftime(DATETIME_FORMAT)
-        print(f"Debug - start: Start, chat_id={chat_id}")
-        
-        print(f"Debug - start: Get user from sheet, chat_id={chat_id}")
         user = self.sheets_handler.get_user_from_sheet(chat_id)
-        print(f"Debug - start: Retrieved user: {user}")
-        
+
         if user and user.get('ExpiryDate'):
              expiry_date = user.get('ExpiryDate')
-             print(f"Debug - start: User expiry_date: {expiry_date}")
              if expiry_date:
                  expiry_date = datetime.strptime(expiry_date, DATE_FORMAT).date()
                  if datetime.now().date() > expiry_date:
@@ -397,13 +354,10 @@ class TelegramBotHandler:
                 raise InvalidInputError("Link sheet không hợp lệ.")
 
             # Lưu link Google Sheet vào sheet user của admin
-            print(f"Debug - set_sheet: Saving sheet link {sheet_link} for user {chat_id}")
             
             if self.sheets_handler.update_user_sheet_link(chat_id, sheet_link=sheet_link):
-                 print(f"Debug - set_sheet: Sheet link updated successfully")
                  await context.bot.send_message(chat_id=chat_id, text="Đã lưu link Google Sheet thành công!\n\nHướng dẫn nhập dữ liệu:\n- Chỉ cần nhập tin nhắn theo cú pháp: <nội dung> <số tiền>.\n- Ví dụ:\n  \"Mua cà phê 100k\"\n  \"Ăn trưa 50000\"\n  \"Đóng tiền nhà 1.5tr\"\nDữ liệu sẽ được tự động lưu vào Google Sheet của bạn.")
             else:
-                print(f"Debug - set_sheet: Sheet link failed to update")
                 await context.bot.send_message(chat_id=chat_id, text="Có lỗi xảy ra, vui lòng thử lại sau.")
         except BotError as e:
             logger.error(f"Lỗi trong lệnh set_sheet: {e}")
@@ -455,13 +409,9 @@ class TelegramBotHandler:
     async def handle_message(self, update: Update, context):
          chat_id = update.effective_chat.id
          message_text = update.message.text.strip()
-         print(f"Debug - handle_message: Message: {message_text}")
-         print(f"Debug - handle_message: chat_id: {chat_id}, type: {type(chat_id)}")
          try:
              now = datetime.now()
-             print(f"Debug - handle_message: Getting user from sheet")
              user = self.sheets_handler.get_user_from_sheet(chat_id)
-             print(f"Debug - handle_message: User from sheet: {user}")
              if user:
                 expiry_date = user.get('ExpiryDate')
                 if expiry_date:
@@ -505,18 +455,13 @@ class TelegramBotHandler:
 
              # Kiểm tra nếu tin nhắn khớp với định dạng "nội dung số_tiền"
              match = re.match(r"(.*)\s+([\d\.]+k?|[\d\.]+tr?)", message_text, re.IGNORECASE) # Thay regex ở đây
-             print(f"Debug - handle_message: Match: {match}")
              if match:
                 description = match.group(1).strip()
                 amount_str = match.group(2)
                 
                 try:
                     amount = self.normalize_amount(amount_str)
-                    print(f"Debug - handle_message: Amount: {amount}, Description: {description}")
-                    
-                    print(f"Debug - handle_message: Getting user sheet link for {chat_id}")
                     sheet_link = self.sheets_handler.get_user_sheet_link(chat_id)
-                    print(f"Debug - handle_message: sheet_link from get_user_sheet_link {sheet_link}")
                     if not sheet_link:
                          await context.bot.send_message(
                                 chat_id=chat_id,
@@ -524,7 +469,6 @@ class TelegramBotHandler:
                                  )
                          return
                     
-                    print(f"Debug - handle_message: Calling add expense: {sheet_link}")
                     if self.sheets_handler.add_expense(chat_id, description, amount, sheet_link):
                         await context.bot.send_message(
                             chat_id=chat_id,
@@ -578,7 +522,7 @@ def home():
 @app.route('/webhook', methods=['POST'])
 def webhook():
     data = request.get_json()
-    print("Webhook data received:", data)  # In dữ liệu nhận từ Telegram
+    print("Webhook data received:", data)
     if data:
         try:
             update = Update.de_json(data, bot)
@@ -605,4 +549,7 @@ if __name__ == "__main__":
 
         # Chạy bot sử dụng webhook
         port = int(os.environ.get("PORT", 10000))
-        app.run(host='0.0.0.0', port
+        app.run(host='0.0.0.0', port=port)
+      
+    except Exception as e:
+        logger.error(f"Lỗi trong quá trình khởi chạy bot: {e}")
