@@ -11,20 +11,20 @@ from telegram.ext import (
 )
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-import json  # Import the json module
+import json  # Import thư viện json để làm việc với dữ liệu JSON
 from flask import Flask, request
 
-# --- CONFIGURATION ---
+# --- CẤU HÌNH ---
 class Config:
     """Lớp chứa các cấu hình của bot."""
-    BOT_TOKEN = "7684510871:AAHmPcT0KI5VqIQ_DE7jdaQngaL_TWqINCw"  # Replace with your bot token
-    ADMIN_CHAT_ID = "5049353267"  # Replace with your admin chat ID
-    # GOOGLE_JSON_KEY_PATH = "/storage/emulated/0/Download/thu-chi-tele-446215-dd9acc542272.json" # Remove this line
+    BOT_TOKEN = "7684510871:AAHmPcT0KI5VqIQ_DE7jdaQngaL_TWqINCw"  # Thay bằng token bot của bạn
+    ADMIN_CHAT_ID = "5049353267"  # Thay bằng ID chat của admin
+    # GOOGLE_JSON_KEY_PATH = "/storage/emulated/0/Download/thu-chi-tele-446215-dd9acc542272.json" # Xóa dòng này
     GOOGLE_SHEET_NAME = "ThuChiData"
     GOOGLE_USER_MANAGEMENT_WORKSHEET_NAME = "UserManagement"
-    GOOGLE_MESSAGES_LOG_WORKSHEET_NAME = "MessagesLog" # New config
+    GOOGLE_MESSAGES_LOG_WORKSHEET_NAME = "MessagesLog" # Tên worksheet để lưu log tin nhắn
 
-     # Column Mapping UserManagement
+     # Ánh xạ cột trong worksheet UserManagement
     USER_COLUMNS = {
         'chat_id': 0,
         'start_time': 1,
@@ -34,8 +34,8 @@ class Config:
 
     @classmethod
     def validate(cls):
-        """Kiểm tra tính hợp lệ của các biến môi trường."""
-        if not all([cls.BOT_TOKEN, cls.ADMIN_CHAT_ID]): # Remove GOOGLE_JSON_KEY_PATH validation
+        """Kiểm tra tính hợp lệ của các biến cấu hình."""
+        if not all([cls.BOT_TOKEN, cls.ADMIN_CHAT_ID]): # Xóa kiểm tra GOOGLE_JSON_KEY_PATH
             raise ValueError("Không tìm thấy tất cả các biến môi trường cần thiết. Hãy kiểm tra file .env.")
         
         if not cls.ADMIN_CHAT_ID.isdigit():
@@ -43,7 +43,7 @@ class Config:
         
         if not all([isinstance(index, int) for index in cls.USER_COLUMNS.values()]):
             raise ValueError("Giá trị trong USER_COLUMNS dictionary phải là số nguyên.")
-# Load Config
+# Tải cấu hình
 try:
     config = Config()
     Config.validate()
@@ -51,7 +51,7 @@ except ValueError as e:
     print(f"Lỗi cấu hình: {e}")
     exit(1)
 
-# --- EXCEPTIONS ---
+# --- CÁC LOẠI LỖI ---
 class BotError(Exception):
     """Lỗi chung của bot."""
     pass
@@ -64,9 +64,9 @@ class InvalidInputError(BotError):
     """Lỗi đầu vào không hợp lệ."""
     pass
 
-# --- GOOGLE SHEETS HANDLER ---
+# --- XỬ LÝ GOOGLE SHEETS ---
 scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-SHEET_LINK_REGEX = r'https:\/\/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9-_]+)' # Add regex to validate sheet link
+SHEET_LINK_REGEX = r'https:\/\/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9-_]+)' # Regex để kiểm tra link sheet
 
 class GoogleSheetsHandler:
     def __init__(self):
@@ -78,7 +78,7 @@ class GoogleSheetsHandler:
             creds = ServiceAccountCredentials.from_json_keyfile_dict(json.loads(json_key), scope)
             self.client = gspread.authorize(creds)
             self.user_management_sheet = self.client.open(config.GOOGLE_SHEET_NAME).worksheet(config.GOOGLE_USER_MANAGEMENT_WORKSHEET_NAME)
-            self.messages_log_sheet = self.client.open(config.GOOGLE_SHEET_NAME).worksheet(config.GOOGLE_MESSAGES_LOG_WORKSHEET_NAME) # New sheet init
+            self.messages_log_sheet = self.client.open(config.GOOGLE_SHEET_NAME).worksheet(config.GOOGLE_MESSAGES_LOG_WORKSHEET_NAME) # Khởi tạo worksheet log tin nhắn
             logger.info("Kết nối đến Google Sheets thành công.")
         except Exception as e:
             logger.error(f"Lỗi kết nối đến Google Sheets: {e}")
@@ -133,14 +133,14 @@ class GoogleSheetsHandler:
             print(f"Debug - update_user_sheet: Values to update: {values_to_update}, User row: {user_row}")
 
             if user_row:
-                # Update existing user
+                # Cập nhật thông tin người dùng đã có
                 for col, value in values_to_update.items():
                     self.user_management_sheet.update_cell(user_row, col + 1, value)
 
                 logger.info(f"Đã cập nhật thông tin người dùng {chat_id} trong sheet. Cập nhật: {values_to_update}")
                 print(f"Debug - update_user_sheet: updated user {chat_id}")
             else:
-                # Add a new user
+                # Thêm người dùng mới
                 new_row = [str(chat_id), start_time, expiry_date, status]
                 self.user_management_sheet.append_row(new_row)
                 logger.info(f"Đã thêm người dùng mới {chat_id} vào sheet: {new_row}")
@@ -174,11 +174,11 @@ class GoogleSheetsHandler:
             
             if user_row:
                 print(f"Debug - update_user_sheet_link: Before Update Cell, user_row={user_row}, sheet_link={sheet_link}")
-                self.user_management_sheet.update_cell(user_row, 5, sheet_link)  # Assume column 5 is `SheetLink`
+                self.user_management_sheet.update_cell(user_row, 5, sheet_link)  # Giả sử cột 5 là `SheetLink`
                 logger.info(f"Đã cập nhật link sheet của người dùng {chat_id}: {sheet_link}")
                 print(f"Debug - update_user_sheet_link: Link updated successfully")
             else:
-                # Only add new row if there is no any user in sheet
+                # Chỉ thêm dòng mới nếu không có user nào
                 existing_user = any(user['ChatID'] == str(chat_id) for user in users)
                 if not existing_user:
                     new_row = [str(chat_id), None, None, None, sheet_link]
@@ -234,7 +234,7 @@ class GoogleSheetsHandler:
     def log_message_to_sheet(self, chat_id, message_text, message_count):
         """Lưu thông tin tin nhắn vào Google Sheet."""
         try:
-            # Use the existing messages_log_sheet
+            # Sử dụng worksheet messages_log_sheet đã được khởi tạo
             new_row = [str(chat_id), message_text, message_count]
             self.messages_log_sheet.append_row(new_row)
             logger.info(f"Đã lưu tin nhắn của {chat_id} vào Google Sheet: {new_row}")
@@ -244,19 +244,20 @@ class GoogleSheetsHandler:
              print(f"Debug - log_message_to_sheet: Error saving message: {e}")
              raise GoogleSheetError(f"Lỗi khi ghi log tin nhắn vào Google Sheet: {e}")
 
-# --- TELEGRAM BOT HANDLER ---
+# --- XỬ LÝ BOT TELEGRAM ---
 logger = logging.getLogger(__name__)
 DATE_FORMAT = '%Y-%m-%d'
 DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S'
-TIME_WINDOW_MINUTES = 1 # Time window for spam
-SPAM_LIMIT = 5 # Number of messages to trigger spam block
+TIME_WINDOW_MINUTES = 1 # Khoảng thời gian cho việc chống spam
+SPAM_LIMIT = 5 # Số tin nhắn tối đa để chống spam
 
-# Tạm lưu thông tin link Google Sheet trong session
+# Lưu thông tin phiên của người dùng
 user_sessions = {}
-user_message_times = {} # Store message time for spam
+user_message_times = {} # Lưu thời gian gửi tin nhắn để chống spam
 
 class TelegramBotHandler:
     def __init__(self, bot_instance):
+        # Không khởi tạo bot ở đây nữa mà sử dụng bot từ Flask
         self.bot = bot_instance
         self.app = Application.builder().token(config.BOT_TOKEN).bot(self.bot).build()
         self.sheets_handler = GoogleSheetsHandler()
@@ -270,7 +271,7 @@ class TelegramBotHandler:
          self.app.add_handler(CommandHandler('activate', self.activate))
          self.app.add_handler(CommandHandler('help', self.help))
          self.app.add_handler(CommandHandler('getid', self.get_id))
-         self.app.add_handler(CommandHandler('set_sheet', self.set_sheet))  # New handler
+         self.app.add_handler(CommandHandler('set_sheet', self.set_sheet))  # Thêm handler cho lệnh set_sheet
          self.app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_message))
 
     async def start(self, update: Update, context):
@@ -472,11 +473,11 @@ class TelegramBotHandler:
                         )
                         return
              
-             # --- Start Message Logging ---
+             # --- Bắt đầu ghi log tin nhắn ---
              if chat_id not in user_message_times:
                  user_message_times[chat_id] = []
-             user_message_times[chat_id].append(now) # Append current time
-              # Xóa các timestamp ngoài khoảng thời gian giới hạn
+             user_message_times[chat_id].append(now) # Thêm thời gian hiện tại
+              # Xóa các timestamp cũ hơn thời gian giới hạn
              user_message_times[chat_id] = [
                   timestamp for timestamp in user_message_times[chat_id]
                     if now - timestamp < timedelta(minutes=TIME_WINDOW_MINUTES)
@@ -492,7 +493,7 @@ class TelegramBotHandler:
                    text="Có lỗi khi lưu tin nhắn vào sheet log. Vui lòng thử lại sau."
                  )
                 return
-             # Check for spam
+             # Kiểm tra spam
              if message_count > SPAM_LIMIT:
                  await context.bot.send_message(
                         chat_id=chat_id,
@@ -500,10 +501,10 @@ class TelegramBotHandler:
                     )
                  return
              
-             # --- End Message Logging ---
+             # --- Kết thúc ghi log tin nhắn ---
 
-             # Check if the message matches the format "amount description"
-             match = re.match(r"(.*)\s+([\d\.]+k?|[\d\.]+tr?)", message_text, re.IGNORECASE) # Change regex here
+             # Kiểm tra nếu tin nhắn khớp với định dạng "nội dung số_tiền"
+             match = re.match(r"(.*)\s+([\d\.]+k?|[\d\.]+tr?)", message_text, re.IGNORECASE) # Thay regex ở đây
              print(f"Debug - handle_message: Match: {match}")
              if match:
                 description = match.group(1).strip()
@@ -567,7 +568,7 @@ class TelegramBotHandler:
             amount = float(amount_str)
         return amount
         
-# --- FLASK APP ---
+# --- ỨNG DỤNG FLASK ---
 app = Flask(__name__)
 
 @app.route('/')
@@ -579,11 +580,11 @@ def webhook():
     data = request.get_json()
     if data:
         update = Update.de_json(data, bot)
-        telegram_bot_handler.app.process_update(update)  # Process update through the bot
+        telegram_bot_handler.app.process_update(update)  # Chuyển update đến Application
     return "OK"
 
 # --- MAIN ---
-# Logging setup
+# Cấu hình logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -591,10 +592,11 @@ logger = logging.getLogger(__name__)
 if __name__ == "__main__":
     """Khởi tạo và chạy bot."""
     try:
+        # Khởi tạo Bot từ Flask để không bị xung đột
         bot = Bot(token=config.BOT_TOKEN)
         telegram_bot_handler = TelegramBotHandler(bot)
         
-        # Start bot using webhook
+        # Chạy bot sử dụng webhook
         port = int(os.environ.get("PORT", 10000))
         app.run(host='0.0.0.0', port=port)
       
