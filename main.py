@@ -221,7 +221,7 @@ class TelegramBotHandler:
     def __init__(self, bot):
         # Không khởi tạo bot ở đây nữa mà sử dụng bot từ Flask
         self.bot = bot
-        self.app = Application.builder().token(config.BOT_TOKEN).bot(self.bot).build()
+        self.app = Application.builder().token(config.BOT_TOKEN).build()
         self.sheets_handler = GoogleSheetsHandler()
         self._register_handlers()
         logger.info("Bot Telegram đã được khởi tạo.")
@@ -240,7 +240,7 @@ class TelegramBotHandler:
         chat_id = update.effective_chat.id
         now = datetime.now().strftime(DATETIME_FORMAT)
         user = self.sheets_handler.get_user_from_sheet(chat_id)
-
+        
         if user and user.get('ExpiryDate'):
              expiry_date = user.get('ExpiryDate')
              if expiry_date:
