@@ -526,9 +526,11 @@ async def webhook():
         try:
             update = Update.de_json(data, bot)
             if update.message:
+                logger.info(f"Received message update: {update.message}")
                 await telegram_bot_handler.app.process_update(update)
+                logger.info("Processed message update")
             else:
-                 logger.warning("Webhook received non-message update")
+                logger.warning("Webhook received non-message update")
         except Exception as e:
             logger.error(f"Error processing webhook data: {e}")
     return "OK"
