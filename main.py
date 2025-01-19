@@ -354,7 +354,6 @@ class TelegramBotHandler:
                 raise InvalidInputError("Link sheet không hợp lệ.")
 
             # Lưu link Google Sheet vào sheet user của admin
-            
             if self.sheets_handler.update_user_sheet_link(chat_id, sheet_link=sheet_link):
                  await context.bot.send_message(chat_id=chat_id, text="Đã lưu link Google Sheet thành công!\n\nHướng dẫn nhập dữ liệu:\n- Chỉ cần nhập tin nhắn theo cú pháp: <nội dung> <số tiền>.\n- Ví dụ:\n  \"Mua cà phê 100k\"\n  \"Ăn trưa 50000\"\n  \"Đóng tiền nhà 1.5tr\"\nDữ liệu sẽ được tự động lưu vào Google Sheet của bạn.")
             else:
@@ -520,14 +519,14 @@ def home():
     return "Bot is running!"
 
 @app.route('/webhook', methods=['POST'])
-def webhook():
+async def webhook():
     data = request.get_json()
     print("Webhook data received:", data)
     if data:
         try:
             update = Update.de_json(data, bot)
             if update.message:
-                telegram_bot_handler.app.process_update(update)
+                await telegram_bot_handler.app.process_update(update)
             else:
                 logger.warning("Webhook received non-message update")
         except Exception as e:
